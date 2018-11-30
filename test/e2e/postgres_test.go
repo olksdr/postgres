@@ -55,7 +55,7 @@ var _ = Describe("Postgres", func() {
 		postgresVersion = f.PostgresVersion()
 		garbagePostgres = new(api.PostgresList)
 		snapshot = f.Snapshot()
-		secret = new(core.Secret)
+		secret = nil
 		skipMessage = ""
 		skipSnapshotDataChecking = true
 		skipWalDataChecking = true
@@ -78,6 +78,13 @@ var _ = Describe("Postgres", func() {
 
 		By("Waiting for database to be ready")
 		f.EventuallyPingDatabase(postgres.ObjectMeta, dbName, dbUser).Should(BeTrue())
+
+		By("Wait for AppBinding to create")
+		f.EventuallyAppBinding(postgres.ObjectMeta).Should(BeTrue())
+
+		By("Check valid AppBinding Specs")
+		err := f.CheckAppBindingSpec(postgres.ObjectMeta)
+		Expect(err).NotTo(HaveOccurred())
 	}
 
 	var testGeneralBehaviour = func() {
@@ -240,7 +247,8 @@ var _ = Describe("Postgres", func() {
 		}
 
 		if secret != nil {
-			f.DeleteSecret(secret.ObjectMeta)
+			err := f.DeleteSecret(secret.ObjectMeta)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		By("Deleting PostgresVersion crd")
@@ -307,14 +315,16 @@ var _ = Describe("Postgres", func() {
 					})
 
 					AfterEach(func() {
-						f.DeletePersistentVolumeClaim(snapPVC.ObjectMeta)
+						err := f.DeletePersistentVolumeClaim(snapPVC.ObjectMeta)
+						Expect(err).NotTo(HaveOccurred())
 					})
 
 					It("should delete Snapshot successfully", func() {
 						shouldTakeSnapshot()
 
 						By("Deleting Snapshot")
-						f.DeleteSnapshot(snapshot.ObjectMeta)
+						err := f.DeleteSnapshot(snapshot.ObjectMeta)
+						Expect(err).NotTo(HaveOccurred())
 
 						By("Waiting Snapshot to be deleted")
 						f.EventuallySnapshot(snapshot.ObjectMeta).Should(BeFalse())
@@ -455,7 +465,8 @@ var _ = Describe("Postgres", func() {
 					})
 
 					AfterEach(func() {
-						f.DeletePersistentVolumeClaim(snapPVC.ObjectMeta)
+						err := f.DeletePersistentVolumeClaim(snapPVC.ObjectMeta)
+						Expect(err).NotTo(HaveOccurred())
 					})
 
 					It("should initialize successfully", shouldInitializeFromSnapshot)
@@ -493,7 +504,8 @@ var _ = Describe("Postgres", func() {
 				createAndWaitForRunning()
 
 				By("Delete postgres")
-				f.DeletePostgres(postgres.ObjectMeta)
+				err := f.DeletePostgres(postgres.ObjectMeta)
+				Expect(err).NotTo(HaveOccurred())
 
 				By("Wait for postgres to be paused")
 				f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
@@ -645,7 +657,8 @@ var _ = Describe("Postgres", func() {
 					for i := 0; i < 3; i++ {
 						By(fmt.Sprintf("%v-th", i+1) + " time running.")
 						By("Delete postgres")
-						f.DeletePostgres(postgres.ObjectMeta)
+						err := f.DeletePostgres(postgres.ObjectMeta)
+						Expect(err).NotTo(HaveOccurred())
 
 						By("Wait for postgres to be paused")
 						f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
@@ -661,7 +674,7 @@ var _ = Describe("Postgres", func() {
 						By("Wait for Running postgres")
 						f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
 
-						_, err := f.GetPostgres(postgres.ObjectMeta)
+						_, err = f.GetPostgres(postgres.ObjectMeta)
 						Expect(err).NotTo(HaveOccurred())
 					}
 				})
@@ -693,7 +706,8 @@ var _ = Describe("Postgres", func() {
 
 				It("should run scheduler successfully", func() {
 					By("Create Secret")
-					f.CreateSecret(secret)
+					err := f.CreateSecret(secret)
+					Expect(err).NotTo(HaveOccurred())
 
 					// Create and wait for running Postgres
 					createAndWaitForRunning()
@@ -709,7 +723,8 @@ var _ = Describe("Postgres", func() {
 					createAndWaitForRunning()
 
 					By("Create Secret")
-					f.CreateSecret(secret)
+					err := f.CreateSecret(secret)
+					Expect(err).NotTo(HaveOccurred())
 
 					By("Update postgres")
 					_, err = f.PatchPostgres(postgres.ObjectMeta, func(in *api.Postgres) *api.Postgres {
@@ -926,10 +941,11 @@ var _ = Describe("Postgres", func() {
 					f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
 
 					By("Update postgres to set spec.terminationPolicy = Pause")
-					f.PatchPostgres(postgres.ObjectMeta, func(in *api.Postgres) *api.Postgres {
+					_, err := f.PatchPostgres(postgres.ObjectMeta, func(in *api.Postgres) *api.Postgres {
 						in.Spec.TerminationPolicy = api.TerminationPolicyPause
 						return in
 					})
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 
@@ -985,7 +1001,8 @@ var _ = Describe("Postgres", func() {
 
 				AfterEach(func() {
 					By("Deleting snapshot: " + snapshot.Name)
-					f.DeleteSnapshot(snapshot.ObjectMeta)
+					err := f.DeleteSnapshot(snapshot.ObjectMeta)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("should not create DormantDatabase and should not delete secret and snapshot", func() {
@@ -1171,7 +1188,8 @@ var _ = Describe("Postgres", func() {
 
 				AfterEach(func() {
 					By("Deleting configMap: " + userConfig.Name)
-					f.DeleteConfigMap(userConfig.ObjectMeta)
+					err := f.DeleteConfigMap(userConfig.ObjectMeta)
+					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("should set configuration provided in configMap", func() {
