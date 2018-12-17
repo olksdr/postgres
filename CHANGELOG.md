@@ -1,5 +1,41 @@
 # Change Log
 
+## [0.9.0](https://github.com/kubedb/postgres/tree/0.9.0) (2018-12-17)
+[Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0-rc.2...0.9.0)
+
+**Merged pull requests:**
+
+- Reuse event recorder [\#241](https://github.com/kubedb/postgres/pull/241) ([tamalsaha](https://github.com/tamalsaha))
+- Revendor dependencies [\#240](https://github.com/kubedb/postgres/pull/240) ([tamalsaha](https://github.com/tamalsaha))
+-  Updated OSM binary in postgres-tools [\#239](https://github.com/kubedb/postgres/pull/239) ([the-redback](https://github.com/the-redback))
+- Test for faulty snapshot [\#238](https://github.com/kubedb/postgres/pull/238) ([the-redback](https://github.com/the-redback))
+
+## [0.9.0-rc.2](https://github.com/kubedb/postgres/tree/0.9.0-rc.2) (2018-12-06)
+[Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0-rc.1...0.9.0-rc.2)
+
+**Merged pull requests:**
+
+- Take database name from spec while upgrade secret [\#237](https://github.com/kubedb/postgres/pull/237) ([the-redback](https://github.com/the-redback))
+- Upgrade database secret keys [\#236](https://github.com/kubedb/postgres/pull/236) ([the-redback](https://github.com/the-redback))
+- Ignore mutation of fields to default values during update [\#235](https://github.com/kubedb/postgres/pull/235) ([tamalsaha](https://github.com/tamalsaha))
+- Support configuration options for exporter sidecar [\#234](https://github.com/kubedb/postgres/pull/234) ([tamalsaha](https://github.com/tamalsaha))
+- Use flags.DumpAll [\#233](https://github.com/kubedb/postgres/pull/233) ([tamalsaha](https://github.com/tamalsaha))
+
+## [0.9.0-rc.1](https://github.com/kubedb/postgres/tree/0.9.0-rc.1) (2018-12-04)
+[Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0-rc.0...0.9.0-rc.1)
+
+**Merged pull requests:**
+
+- Upgraded wal-g binary to 0.2.0 [\#232](https://github.com/kubedb/postgres/pull/232) ([the-redback](https://github.com/the-redback))
+- Apply cleanup [\#231](https://github.com/kubedb/postgres/pull/231) ([tamalsaha](https://github.com/tamalsaha))
+- Set periodic analytics [\#230](https://github.com/kubedb/postgres/pull/230) ([tamalsaha](https://github.com/tamalsaha))
+- Introduce AppBinding support [\#229](https://github.com/kubedb/postgres/pull/229) ([the-redback](https://github.com/the-redback))
+- Use default lease durations as apiserver [\#228](https://github.com/kubedb/postgres/pull/228) ([the-redback](https://github.com/the-redback))
+- Fix: enableAnlytics / logLevel flags not passed on to databases [\#227](https://github.com/kubedb/postgres/pull/227) ([the-redback](https://github.com/the-redback))
+- Fix analytics [\#226](https://github.com/kubedb/postgres/pull/226) ([the-redback](https://github.com/the-redback))
+- Error out from backup cron job for deprecated db versions [\#225](https://github.com/kubedb/postgres/pull/225) ([the-redback](https://github.com/the-redback))
+- Add CRDS without observation when operator starts [\#223](https://github.com/kubedb/postgres/pull/223) ([the-redback](https://github.com/the-redback))
+
 ## [0.9.0-rc.0](https://github.com/kubedb/postgres/tree/0.9.0-rc.0) (2018-10-15)
 [Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0-beta.1...0.9.0-rc.0)
 
