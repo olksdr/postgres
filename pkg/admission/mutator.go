@@ -14,6 +14,7 @@ import (
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
 	"github.com/pkg/errors"
 	admission "k8s.io/api/admission/v1beta1"
+	core "k8s.io/api/core/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,6 +106,28 @@ func setDefaultValues(client kubernetes.Interface, extClient cs.Interface, postg
 		postgres.Spec.Replicas = types.Int32P(1)
 	}
 	postgres.SetDefaults()
+
+	// todo: move to set defaults
+	//============ start
+	postgres.Spec.PodTemplate.Spec.Lifecycle = &core.Lifecycle{
+		PreStop: &core.Handler{
+			Exec: &core.ExecAction{
+				Command: []string{"su", "postgres", "-c", "pg_ctl -D ${PGDATA} stop"},
+			},
+		},
+	}
+
+	postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
+		Handler: core.Handler{
+			Exec: &core.ExecAction{
+				Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
+			},
+		},
+		InitialDelaySeconds: 100, // todo: may be make it to 15/20 minutes (long enough to initialize wal-g
+		PeriodSeconds:       10,  // todo: every 1 minute
+		TimeoutSeconds:      5,
+	}
+	// END ==========
 
 	if err := setDefaultsFromDormantDB(extClient, postgres); err != nil {
 		return nil, err

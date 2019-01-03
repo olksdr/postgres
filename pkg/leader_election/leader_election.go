@@ -96,6 +96,7 @@ func RunLeaderElection() {
 				},
 				OnStoppedLeading: func() {
 					fmt.Println("Lost leadership, now quit")
+					//gracefullyStopPostgres()
 					os.Exit(1)
 				},
 				OnNewLeader: func(identity string) {
@@ -131,13 +132,14 @@ func RunLeaderElection() {
 						runningFirstTime = false
 						go func() {
 							// su-exec postgres /scripts/primary/run.sh
-							cmd := exec.Command("su-exec", "postgres", fmt.Sprintf("/scripts/%s/run.sh", role))
+							cmd := exec.Command("su", "postgres", fmt.Sprintf("/scripts/%s/run.sh", role))
 							cmd.Stdout = os.Stdout
 							cmd.Stderr = os.Stderr
 
 							if err = cmd.Run(); err != nil {
 								log.Println(err)
 							}
+							//gracefullyStopPostgres()
 							os.Exit(1)
 						}()
 					} else {
@@ -177,4 +179,21 @@ func setPermission() error {
 
 func GetLeaderLockName(offshootName string) string {
 	return fmt.Sprintf("%s-leader-lock", offshootName)
+}
+
+func gracefullyStopPostgres() {
+	cmd := exec.Command("su", "postgres", "-c", "echo '>>>>>>>>>>>>>>>>>>>>.here we are'")
+	cmd2 := exec.Command("su", "postgres", "-c", "pg_ctl -D ${PGDATA} stop")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd2.Stdout = os.Stdout
+	cmd2.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Println(err)
+	}
+
+	if err := cmd2.Run(); err != nil {
+		log.Println(err)
+	}
 }

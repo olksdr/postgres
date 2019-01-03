@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -xe
 
 echo "Running as Primary"
 
@@ -30,5 +30,9 @@ if [ "$ARCHIVE" == "wal-g" ]; then
   PGUSER="postgres" wal-g backup-push "$PGDATA" >/dev/null
   pg_ctl -D "$PGDATA" -m fast -w stop
 fi
+
+# In already running primary server from previous releases, postgresql.conf may not contain 'wal_log_hints = on'
+# Set it using 'sed'. ref: https://stackoverflow.com/a/11245501/4628962
+sed -i '/wal_log_hints/c\wal_log_hints = on' $PGDATA/postgresql.conf
 
 exec postgres
