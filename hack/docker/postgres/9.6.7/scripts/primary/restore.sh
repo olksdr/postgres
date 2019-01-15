@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#TODO: delete
 set -x
 
 mkdir -p "$PGDATA"

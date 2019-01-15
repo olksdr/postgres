@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+#TODO: remoxe -x
 set -xe
 
 echo "Running as Replica"
@@ -72,7 +73,7 @@ setup_postgresql_config() {
     export AWS_ACCESS_KEY_ID=$(cat "$CRED_PATH/AWS_ACCESS_KEY_ID")
     export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
 
-    # setup postgrekcsql.conf
+    # setup postgresql.conf
     echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
     echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
     echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
@@ -96,9 +97,11 @@ if [ ! -e "$PGDATA/PG_VERSION" ]; then
   echo "asdfasdfsdf"
   take_pg_basebackup
 else
+  # pg_rewind. https://www.postgresql.org/docs/9.6/app-pgrewind.html
+
   # Why pg_rewind? refs:
   # - Resolves conflict of different timelines. ref:
-  # 1. https://www.postgresql.org/docs/9.6/app-pgrewind.html
+  # 1. http://hlinnaka.iki.fi/presentations/NordicPGDay2015-pg_rewind.pdf
   # 2. part(1 of 3) https://blog.2ndquadrant.com/introduction-to-pgrewind/
   # 3. part(2 of 3) https://blog.2ndquadrant.com/pgrewind-and-pg95/
   # 4. part(3 of 3) https://blog.2ndquadrant.com/back-to-the-future-part-3-pg_rewind-with-postgresql-9-6/
@@ -134,10 +137,10 @@ else
       # pg_rewind will throw an error similar to "could not find previous WAL record at 0/30000F8".
       # We have to manually fetch WALs starting from the missing point.
       # At this point, we will take pg_basebackup.
-      # todo: for wal-g or other kind of wal-archiving, fetch missing WALs from archive storage (may be). Then, run pg_rewind again
+      # TODO: for wal-g or other kind of wal-archiving, fetch missing WALs from archive storage (may be). Then, run pg_rewind again
     ([[ "$EXIT_CODE" != "0" ]] && [[ $(echo $PG_REWIND_OUTPUT | grep -c "could not find common ancestor") -gt 0 ]]) ||
       # Since 9.6, pg_rewind is very powerful to find common ancestor while running on non-promoted master.
-      # ref: https://blog.2ndquadrant.com/back-to-the-future-part-3-pg_rewind-with-postgresql-9-6/
+      # ref: https://www.enterprisedb.com/blog/pgrewind-improvements-postgresql-96
       # Yet, if the error shows up, taking pg_basebackup is a must.
     ([[ "$EXIT_CODE" != "0" ]] && [[ $(echo $PG_REWIND_OUTPUT | grep -c "server needs to use either data checksums") -gt 0 ]])
       # In case of upgrade from previous database version, where 'wal_log_hints' was not turned on, this error may occur.

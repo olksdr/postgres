@@ -107,7 +107,7 @@ func setDefaultValues(client kubernetes.Interface, extClient cs.Interface, postg
 	}
 	postgres.SetDefaults()
 
-	// todo: move to set defaults
+	// TODO: move to set defaults
 	//============ start
 	postgres.Spec.PodTemplate.Spec.Lifecycle = &core.Lifecycle{
 		PreStop: &core.Handler{
@@ -123,8 +123,8 @@ func setDefaultValues(client kubernetes.Interface, extClient cs.Interface, postg
 				Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
 			},
 		},
-		InitialDelaySeconds: 100, // todo: may be make it to 15/20 minutes (long enough to initialize wal-g
-		PeriodSeconds:       10,  // todo: every 1 minute
+		InitialDelaySeconds: 100, // TODO: may be make it to 15/20 minutes (long enough to initialize wal-g
+		PeriodSeconds:       10,  // TODO: every 1 minute
 		TimeoutSeconds:      5,
 	}
 	// END ==========

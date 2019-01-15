@@ -1,4 +1,6 @@
 #!/bin/bash
+
+#TODO: remoxe -x
 set -x
 
 mkdir -p "$PGDATA"
@@ -59,7 +61,7 @@ fi
 
 # alter postgres superuser
 "${psql[@]}" --username postgres <<-EOSQL
-    $op USER "$POSTGRES_USER" WITH SUPERUSER  PASSWORD '$POSTGRES_PASSWORD';
+    $op USER "$POSTGRES_USER" WITH SUPERUSER PASSWORD '$POSTGRES_PASSWORD';
 EOSQL
 echo
 

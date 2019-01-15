@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#TODO: remoxe -x
+set -x
+
 mkdir -p "$PGDATA"
 rm -rf "$PGDATA"/*
 chmod 0700 "$PGDATA"
@@ -23,6 +26,8 @@ cp /scripts/primary/postgresql.conf /tmp
 echo "wal_level = replica" >>/tmp/postgresql.conf
 echo "max_wal_senders = 99" >>/tmp/postgresql.conf
 echo "wal_keep_segments = 32" >>/tmp/postgresql.conf
+echo "wal_log_hints = on" >>/tmp/postgresql.conf
+
 mv /tmp/postgresql.conf "$PGDATA/postgresql.conf"
 
 # setup pg_hba.conf
@@ -78,11 +83,10 @@ done
 pg_ctl -D "$PGDATA" -m fast -w stop >/dev/null
 
 if [ "$STREAMING" == "synchronous" ]; then
-   # setup synchronous streaming replication
-   echo "synchronous_commit = remote_write" >>"$PGDATA/postgresql.conf"
-   echo "synchronous_standby_names = '*'" >>"$PGDATA/postgresql.conf"
+  # setup synchronous streaming replication
+  echo "synchronous_commit = remote_write" >>"$PGDATA/postgresql.conf"
+  echo "synchronous_standby_names = '*'" >>"$PGDATA/postgresql.conf"
 fi
-
 
 if [ "$ARCHIVE" == "wal-g" ]; then
   # setup postgresql.conf

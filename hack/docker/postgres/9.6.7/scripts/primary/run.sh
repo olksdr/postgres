@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+#TODO: remoxe -x
 set -xe
 
 echo "Running as Primary"
