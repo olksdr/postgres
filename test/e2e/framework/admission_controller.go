@@ -25,7 +25,7 @@ import (
 	kApi "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 )
 
-func (f *Framework) isApiSvcReady(apiSvcName string) error {
+func (f *Framework) isAPISvcReady(apiSvcName string) error {
 	apiSvc, err := f.kaClient.ApiregistrationV1beta1().APIServices().Get(apiSvcName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -43,10 +43,10 @@ func (f *Framework) isApiSvcReady(apiSvcName string) error {
 func (f *Framework) EventuallyAPIServiceReady() GomegaAsyncAssertion {
 	return Eventually(
 		func() error {
-			if err := f.isApiSvcReady("v1alpha1.mutators.kubedb.com"); err != nil {
+			if err := f.isAPISvcReady("v1alpha1.mutators.kubedb.com"); err != nil {
 				return err
 			}
-			if err := f.isApiSvcReady("v1alpha1.validators.kubedb.com"); err != nil {
+			if err := f.isAPISvcReady("v1alpha1.validators.kubedb.com"); err != nil {
 				return err
 			}
 			time.Sleep(time.Second * 3) // let the resource become available

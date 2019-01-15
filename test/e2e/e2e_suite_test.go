@@ -29,7 +29,7 @@ import (
 //
 // 1. ./hack/make.py test e2e
 //
-// 2. ./hack/make.py test e2e --v=1  --docker-registry=kubedbci --db-catalog=10.2-v1 --db-version=10.2-v2 --db-tools=10.2-v2 --selfhosted-operator=true
+// 2. ./hack/make.py test e2e --v=1  --docker-registry=kubedbci --db-catalog=10.2-v2 --db-version=10.2-v3 --db-tools=10.2-v2 --selfhosted-operator=true
 
 var (
 	storageClass = "standard"

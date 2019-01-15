@@ -86,9 +86,8 @@ func (f *Framework) EventuallyPostgresPodCount(meta metav1.ObjectMeta) GomegaAsy
 			if err != nil {
 				if kerr.IsNotFound(err) {
 					return -1
-				} else {
-					Expect(err).NotTo(HaveOccurred())
 				}
+				Expect(err).NotTo(HaveOccurred())
 			}
 			return st.Status.ReadyReplicas
 		},
