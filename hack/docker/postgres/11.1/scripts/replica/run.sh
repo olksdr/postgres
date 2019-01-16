@@ -115,6 +115,7 @@ else
   # 2. could not find previous WAL record at 0/30000F8
   # 3. could not find common ancestor of the source and target cluster's timelines
   # 4. target server needs to use either data checksums or "wal_log_hints = on"
+  # 5. None of the above. Example: "source and target clusters are from different systems"
 
   EXIT_CODE=0
   PG_REWIND_OUTPUT=$(pg_rewind --source-server="host=$PRIMARY_HOST user=postgres port=5432 dbname=postgres" --target-pgdata=$PGDATA) || EXIT_CODE=$?
@@ -153,8 +154,9 @@ else
 
   elif [[ "$EXIT_CODE" != "0" ]]; then
     # In another scenario, pg_rewind is failing and the reason is not 'non-existing WAL' or 'no common ancestor'.
-    # The workaround could be deleting $PGDATA directory and taking pg_basebackup again.
-    # But, again the reason is not missing WAl. So, safely exit without processing further.
+    # One example is, "source and target clusters are from different systems". this error happens when,
+    # the primary starts from scratch (when user forces to do, ie deleting pvc manually). It is safe to exit in these similar cases
+    # without processing further, because accidental behavior of user can result into data loss.
     echo "pg_rewind is failing and the reason is: $PG_REWIND_OUTPUT"
     exit 1
   fi
