@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/appscode/go/log"
 	"github.com/appscode/go/types"
@@ -91,6 +92,26 @@ var _ = Describe("Postgres", func() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
+	var pauseAndResumeAgain = func() {
+		By("Delete postgres")
+		err = f.DeletePostgres(postgres.ObjectMeta)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Wait for postgres to be paused")
+		f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
+
+		// Create Postgres object again to resume it
+		By("Create Postgres: " + postgres.Name)
+		err = f.CreatePostgres(postgres)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Wait for DormantDatabase to be deleted")
+		f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
+
+		By("Wait for Running postgres")
+		f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
+	}
+
 	var testGeneralBehaviour = func() {
 		if skipMessage != "" {
 			Skip(skipMessage)
@@ -113,23 +134,7 @@ var _ = Describe("Postgres", func() {
 			postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
 			Should(Equal(3))
 
-		By("Delete postgres")
-		err = f.DeletePostgres(postgres.ObjectMeta)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Wait for postgres to be paused")
-		f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
-
-		// Create Postgres object again to resume it
-		By("Create Postgres: " + postgres.Name)
-		err = f.CreatePostgres(postgres)
-		Expect(err).NotTo(HaveOccurred())
-
-		By("Wait for DormantDatabase to be deleted")
-		f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
-
-		By("Wait for Running postgres")
-		f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
+		pauseAndResumeAgain()
 
 		By("Checking Table")
 		f.EventuallyCountTable(
@@ -288,54 +293,196 @@ var _ = Describe("Postgres", func() {
 
 		Context("Streaming Replication", func() {
 
+			var totalTable int
+
+			var checkDataAcrossReplication = func() {
+				if *postgres.Spec.StandbyMode == api.HotPostgresStandbyMode ||
+					*postgres.Spec.StandbyMode == api.DeprecatedHotStandby {
+
+					By("Checking Table in All pods [read-only connection behaviour]")
+					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
+
+				} else if *postgres.Spec.StandbyMode == api.WarmPostgresStandbyMode ||
+					*postgres.Spec.StandbyMode == api.DeprecatedWarmStandby {
+
+					By("Checking Table")
+					f.EventuallyCountTable(
+						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+						Should(Equal(totalTable))
+
+					By("Checking no read/write connection")
+					f.EventuallyPingDatabase(
+						postgres.ObjectMeta, f.GetArbitraryStandbyPodName(postgres.ObjectMeta), dbName, dbUser).
+						Should(BeFalse())
+				}
+			}
+
+			var createAndInsertData = func() {
+				Expect(postgres.Spec.StandbyMode).NotTo(BeNil())
+
+				createAndWaitForRunning()
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
+				By("Creating Schema")
+				f.EventuallyCreateSchema(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(BeTrue())
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 3).
+					Should(BeTrue())
+				totalTable += 3
+
+				checkDataAcrossReplication()
+			}
+
+			var createNewLeaderForcefully = func(manualNewLeader string) {
+				// Manually change a new leader to the furthest pod {POD_NAME}-{N-1}
+				// Also insert data in new master and check in other pods if the insert applied to them.
+
+				// TODO: find more proper way to force new-leader selection
+
+				By(fmt.Sprintf("Manually make %v the new master", manualNewLeader))
+				f.MakeNewLeaderManually(postgres.ObjectMeta, manualNewLeader)
+
+				By(fmt.Sprintf("Wait for %v to become primary node", manualNewLeader))
+				f.EventuallyLeader(
+					postgres.ObjectMeta).
+					Should(Equal(manualNewLeader))
+
+				By("Waiting for new primary database to be ready")
+				f.EventuallyPingDatabase(postgres.ObjectMeta,
+					manualNewLeader, dbName, dbUser).Should(BeTrue())
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, manualNewLeader, dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+			}
+
+			var shouldFailoverSuccessfully = func() {
+				// Objective: Make pod-{n-1} the primary node. Then reduce replica size.
+				// Then, check if 'failover' is happening successfully.
+				createAndInsertData()
+
+				manualNewLeader := fmt.Sprintf("%v-%v", postgres.Name, *postgres.Spec.Replicas-1)
+				createNewLeaderForcefully(manualNewLeader)
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, manualNewLeader, dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				By("Checking Table")
+				f.EventuallyCountTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(totalTable))
+
+				checkDataAcrossReplication()
+
+				// Now reduce replica by '1'. That way the latest primary node {POD_NAME}-{N-1} will be unavailable,
+				// and a new master should be created as a part of failover.
+				By("Reduce replicas by 1")
+				pg, err := f.PatchPostgres(postgres.ObjectMeta, func(in *api.Postgres) *api.Postgres {
+					replicas := *in.Spec.Replicas - 1
+					in.Spec.Replicas = &replicas
+					return in
+				})
+				Expect(err).NotTo(HaveOccurred())
+				t1 := time.Now()
+				postgres.Spec = pg.Spec
+
+				By(fmt.Sprintf("Wait for %v to loose leadership", manualNewLeader))
+				f.EventuallyLeader(
+					postgres.ObjectMeta).
+					ShouldNot(Equal(manualNewLeader))
+
+				By("Wait for new master node")
+				f.EventuallyLeaderExists(postgres.ObjectMeta).Should(BeTrue())
+				diff := t1.Sub(time.Now())
+				By(fmt.Sprintf("Took time to generate new master: %v", diff))
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				By("Checking Table")
+				f.EventuallyCountTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(totalTable))
+
+				checkDataAcrossReplication()
+
+				// Delete and create again
+				pauseAndResumeAgain()
+
+				checkDataAcrossReplication()
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				checkDataAcrossReplication()
+			}
+
 			//Context("Warm Standby", func() {
 			//
 			//	It("should run successfully", testGeneralBehaviour)
 			//})
 
 			Context("Hot Standby", func() {
-
 				BeforeEach(func() {
+					totalTable = 0
 					standByMode := api.HotPostgresStandbyMode
 					postgres.Spec.Replicas = types.Int32P(4)
 					postgres.Spec.StandbyMode = &standByMode
 				})
 
-				FIt("should stream successfully", func() {
-					createAndWaitForRunning()
+				It("should stream successfully", func() {
+					createAndInsertData()
 
-					By("Creating Schema")
-					f.EventuallyCreateSchema(
+					// Delete and create again
+					pauseAndResumeAgain()
+
+					By("Checking Table in All pods")
+					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
+
+					By("Checking Streaming")
+					f.EventuallyStreamingReplication(
 						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
-						Should(BeTrue())
+						Should(Equal(int(*postgres.Spec.Replicas) - 1))
 
 					By("Creating Table")
 					f.EventuallyCreateTable(
-						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 3).
+						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
 						Should(BeTrue())
+					totalTable += 2
 
 					By("Checking Table  in All pods")
-					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, 3)
-
-					By("Make New leader manually")
-					f.MakeNewLeaderManually(postgres.ObjectMeta, fmt.Sprintf("%v-3", postgres.Name))
-					f.EventuallyNewLeader(
-						postgres.ObjectMeta, fmt.Sprintf("%v-3", postgres.Name)).
-						Should(BeTrue())
-
-					By("Waiting for new primary database to be ready")
-					f.EventuallyPingDatabase(postgres.ObjectMeta,
-						fmt.Sprintf("%v-3", postgres.Name), dbName, dbUser).Should(BeTrue())
-
-					By("Creating Table")
-					f.EventuallyCreateTable(
-						postgres.ObjectMeta, fmt.Sprintf("%v-3", postgres.Name), dbName, dbUser, 2).
-						Should(BeTrue())
-
-					By("Checking Table  in All pods")
-					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, 5)
-
+					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
 				})
+
+				It("should failover successfully", shouldFailoverSuccessfully)
 			})
 
 		})
@@ -783,23 +930,7 @@ var _ = Describe("Postgres", func() {
 				// Create and wait for running Postgres
 				createAndWaitForRunning()
 
-				By("Delete postgres")
-				err := f.DeletePostgres(postgres.ObjectMeta)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Wait for postgres to be paused")
-				f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
-
-				// Create Postgres object again to resume it
-				By("Create Postgres: " + postgres.Name)
-				err = f.CreatePostgres(postgres)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Wait for DormantDatabase to be deleted")
-				f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
-
-				By("Wait for Running postgres")
-				f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
+				pauseAndResumeAgain()
 
 				pg, err := f.GetPostgres(postgres.ObjectMeta)
 				Expect(err).NotTo(HaveOccurred())
@@ -884,23 +1015,7 @@ var _ = Describe("Postgres", func() {
 
 					By("Again delete and resume  " + postgres.Name)
 
-					By("Delete postgres")
-					err = f.DeletePostgres(postgres.ObjectMeta)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("Wait for postgres to be paused")
-					f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
-
-					// Create Postgres object again to resume it
-					By("Create Postgres: " + postgres.Name)
-					err = f.CreatePostgres(postgres)
-					Expect(err).NotTo(HaveOccurred())
-
-					By("Wait for DormantDatabase to be deleted")
-					f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
-
-					By("Wait for Running postgres")
-					f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
+					pauseAndResumeAgain()
 
 					postgres, err = f.GetPostgres(postgres.ObjectMeta)
 					Expect(err).NotTo(HaveOccurred())
@@ -944,23 +1059,8 @@ var _ = Describe("Postgres", func() {
 
 					for i := 0; i < 3; i++ {
 						By(fmt.Sprintf("%v-th", i+1) + " time running.")
-						By("Delete postgres")
-						err := f.DeletePostgres(postgres.ObjectMeta)
-						Expect(err).NotTo(HaveOccurred())
 
-						By("Wait for postgres to be paused")
-						f.EventuallyDormantDatabaseStatus(postgres.ObjectMeta).Should(matcher.HavePaused())
-
-						// Create Postgres object again to resume it
-						By("Create Postgres: " + postgres.Name)
-						err = f.CreatePostgres(postgres)
-						Expect(err).NotTo(HaveOccurred())
-
-						By("Wait for DormantDatabase to be deleted")
-						f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
-
-						By("Wait for Running postgres")
-						f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
+						pauseAndResumeAgain()
 
 						_, err = f.GetPostgres(postgres.ObjectMeta)
 						Expect(err).NotTo(HaveOccurred())

@@ -173,6 +173,45 @@ func (f *Framework) EventuallyCountTable(meta metav1.ObjectMeta, ClientPodName, 
 	)
 }
 
+func (f *Framework) EventuallyStreamingReplication(meta metav1.ObjectMeta, ClientPodName, dbName, userName string) GomegaAsyncAssertion {
+	return Eventually(
+		func() int {
+			tunnel, err := f.ForwardPort(meta, ClientPodName)
+			if err != nil {
+				return -1
+			}
+			defer tunnel.Close()
+
+			db, err := f.GetPostgresClient(tunnel, dbName, userName)
+			if err != nil {
+				return -1
+			}
+			defer db.Close()
+
+			if err := f.CheckPostgres(db); err != nil {
+				return -1
+			}
+
+			results, err := db.Query("select * from pg_stat_replication;")
+			if err != nil {
+				return -1
+			}
+
+			for _, result := range results {
+				applicationName := string(result["application_name"])
+				state := string(result["state"])
+				Expect(strings.HasPrefix(applicationName, meta.Name)).Should(BeTrue())
+				if state != "streaming" {
+					return -1
+				}
+			}
+			return len(results)
+		},
+		time.Minute*5,
+		time.Second*5,
+	)
+}
+
 func (f *Framework) CheckPostgres(db *xorm.Engine) error {
 	err := db.Ping()
 	if err != nil {

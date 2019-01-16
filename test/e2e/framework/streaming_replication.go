@@ -7,15 +7,12 @@ import (
 	"github.com/kubedb/postgres/pkg/controller"
 	"github.com/kubedb/postgres/pkg/leader_election"
 	. "github.com/onsi/gomega"
-	"github.com/the-redback/go-oneliners"
-	"github.com/the-redback/pp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 func (f *Framework) GetPrimaryPodName(meta metav1.ObjectMeta) string {
 	postgres, err := f.GetPostgres(meta)
-
 	Expect(err).NotTo(HaveOccurred())
 	Expect(postgres.Spec.Replicas).NotTo(BeNil())
 
@@ -36,6 +33,27 @@ func (f *Framework) GetPrimaryPodName(meta metav1.ObjectMeta) string {
 	return pods.Items[0].Name
 }
 
+func (f *Framework) GetArbitraryStandbyPodName(meta metav1.ObjectMeta) string {
+	postgres, err := f.GetPostgres(meta)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(postgres.Spec.Replicas).NotTo(BeNil())
+
+	if *postgres.Spec.Replicas == 1 {
+		return ""
+	}
+
+	pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				controller.NodeRole: leader_election.RolePrimary,
+			},
+		}),
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	return pods.Items[0].Name
+}
+
 func (f *Framework) MakeNewLeaderManually(meta metav1.ObjectMeta, newLeaderPodName string) {
 	configMapLock := resourcelock.ConfigMapLock{
 		Client: f.kubeClient.CoreV1(),
@@ -52,12 +70,30 @@ func (f *Framework) MakeNewLeaderManually(meta metav1.ObjectMeta, newLeaderPodNa
 	ler.HolderIdentity = newLeaderPodName
 	err = configMapLock.Update(*ler)
 	Expect(err).NotTo(HaveOccurred())
-
-	oneliners.PrettyJson(ler)
-	pp.Println(ler)
 }
 
-func (f *Framework) EventuallyNewLeader(meta metav1.ObjectMeta, newLeader string) GomegaAsyncAssertion {
+func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+	return Eventually(
+		func() string {
+			pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
+				LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						controller.NodeRole: leader_election.RolePrimary,
+					},
+				}),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			if len(pods.Items) != 1 {
+				return ""
+			}
+			return pods.Items[0].Name
+		},
+		time.Minute*5,
+		time.Second*5,
+	)
+}
+
+func (f *Framework) EventuallyLeaderExists(meta metav1.ObjectMeta) GomegaAsyncAssertion {
 	return Eventually(
 		func() bool {
 			pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
@@ -68,10 +104,7 @@ func (f *Framework) EventuallyNewLeader(meta metav1.ObjectMeta, newLeader string
 				}),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			if len(pods.Items) != 1 {
-				return false
-			}
-			return pods.Items[0].Name == newLeader
+			return len(pods.Items) == 1
 		},
 		time.Minute*5,
 		time.Second*5,
