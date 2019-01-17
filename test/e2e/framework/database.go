@@ -100,7 +100,7 @@ func (f *Framework) EventuallyPingDatabase(meta metav1.ObjectMeta, ClientPodName
 
 			return true
 		},
-		time.Minute*10,
+		time.Minute*1,
 		time.Second*5,
 	)
 }

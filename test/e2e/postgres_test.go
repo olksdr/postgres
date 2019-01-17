@@ -93,6 +93,7 @@ var _ = Describe("Postgres", func() {
 	}
 
 	var pauseAndResumeAgain = func() {
+		f.CurrentLeader(postgres.ObjectMeta)
 		By("Delete postgres")
 		err = f.DeletePostgres(postgres.ObjectMeta)
 		Expect(err).NotTo(HaveOccurred())
@@ -104,9 +105,11 @@ var _ = Describe("Postgres", func() {
 		By("Create Postgres: " + postgres.Name)
 		err = f.CreatePostgres(postgres)
 		Expect(err).NotTo(HaveOccurred())
+		f.CurrentLeader(postgres.ObjectMeta)
 
 		By("Wait for DormantDatabase to be deleted")
 		f.EventuallyDormantDatabase(postgres.ObjectMeta).Should(BeFalse())
+		f.CurrentLeader(postgres.ObjectMeta)
 
 		By("Wait for Running postgres")
 		f.EventuallyPostgresRunning(postgres.ObjectMeta).Should(BeTrue())
@@ -365,6 +368,61 @@ var _ = Describe("Postgres", func() {
 					Should(Equal(int(*postgres.Spec.Replicas) - 1))
 			}
 
+			var shouldStreamSuccessfully = func() {
+				createAndInsertData()
+
+				// Delete and create again
+				pauseAndResumeAgain()
+
+				checkDataAcrossReplication()
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				checkDataAcrossReplication()
+			}
+
+			var shouldResumeAfterDeletion = func() {
+				createAndInsertData()
+
+				manualNewLeader := fmt.Sprintf("%v-%v", postgres.Name, *postgres.Spec.Replicas-1)
+				createNewLeaderForcefully(manualNewLeader)
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, manualNewLeader, dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				checkDataAcrossReplication()
+
+				// Delete and create again
+				pauseAndResumeAgain()
+
+				checkDataAcrossReplication()
+
+				By("Checking Streaming")
+				f.EventuallyStreamingReplication(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+					Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
+				By("Creating Table")
+				f.EventuallyCreateTable(
+					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
+					Should(BeTrue())
+				totalTable += 2
+
+				checkDataAcrossReplication()
+			}
+
 			var shouldFailoverSuccessfully = func() {
 				// Objective: Make pod-{n-1} the primary node. Then reduce replica size.
 				// Then, check if 'failover' is happening successfully.
@@ -378,11 +436,6 @@ var _ = Describe("Postgres", func() {
 					postgres.ObjectMeta, manualNewLeader, dbName, dbUser, 2).
 					Should(BeTrue())
 				totalTable += 2
-
-				By("Checking Table")
-				f.EventuallyCountTable(
-					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
-					Should(Equal(totalTable))
 
 				checkDataAcrossReplication()
 
@@ -419,11 +472,6 @@ var _ = Describe("Postgres", func() {
 					Should(BeTrue())
 				totalTable += 2
 
-				By("Checking Table")
-				f.EventuallyCountTable(
-					postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
-					Should(Equal(totalTable))
-
 				checkDataAcrossReplication()
 
 				// Delete and create again
@@ -450,37 +498,33 @@ var _ = Describe("Postgres", func() {
 			//	It("should run successfully", testGeneralBehaviour)
 			//})
 
+			Context("Warm Standby", func() {
+				BeforeEach(func() {
+					totalTable = 0
+					standByMode := api.WarmPostgresStandbyMode
+					postgres.Spec.Replicas = types.Int32P(4)
+					postgres.Spec.StandbyMode = &standByMode
+				})
+
+				It("should stream successfully", shouldStreamSuccessfully)
+
+				It("should resume when primary is not 0'th pod", shouldResumeAfterDeletion)
+
+				It("should failover successfully", shouldFailoverSuccessfully)
+			})
+
 			Context("Hot Standby", func() {
 				BeforeEach(func() {
 					totalTable = 0
 					standByMode := api.HotPostgresStandbyMode
 					postgres.Spec.Replicas = types.Int32P(4)
 					postgres.Spec.StandbyMode = &standByMode
+					postgres.Spec.SetDefaults()
 				})
 
-				It("should stream successfully", func() {
-					createAndInsertData()
+				It("should stream successfully", shouldStreamSuccessfully)
 
-					// Delete and create again
-					pauseAndResumeAgain()
-
-					By("Checking Table in All pods")
-					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
-
-					By("Checking Streaming")
-					f.EventuallyStreamingReplication(
-						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
-						Should(Equal(int(*postgres.Spec.Replicas) - 1))
-
-					By("Creating Table")
-					f.EventuallyCreateTable(
-						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser, 2).
-						Should(BeTrue())
-					totalTable += 2
-
-					By("Checking Table  in All pods")
-					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
-				})
+				It("should resume when primary is not 0'th pod", shouldResumeAfterDeletion)
 
 				It("should failover successfully", shouldFailoverSuccessfully)
 			})

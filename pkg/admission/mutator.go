@@ -123,8 +123,8 @@ func setDefaultValues(client kubernetes.Interface, extClient cs.Interface, postg
 				Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
 			},
 		},
-		InitialDelaySeconds: 100, // TODO: may be make it to 15/20 minutes (long enough to initialize wal-g
-		PeriodSeconds:       10,  // TODO: every 1 minute
+		InitialDelaySeconds: 600, // TODO: make it long enough to initialize wal-g
+		PeriodSeconds:       10,  // TODO: every 1 minute (may b)
 		TimeoutSeconds:      5,
 	}
 	// END ==========

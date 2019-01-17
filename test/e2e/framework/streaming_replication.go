@@ -7,6 +7,7 @@ import (
 	"github.com/kubedb/postgres/pkg/controller"
 	"github.com/kubedb/postgres/pkg/leader_election"
 	. "github.com/onsi/gomega"
+	oneliners "github.com/the-redback/go-oneliners"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
@@ -45,7 +46,7 @@ func (f *Framework) GetArbitraryStandbyPodName(meta metav1.ObjectMeta) string {
 	pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
 		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				controller.NodeRole: leader_election.RolePrimary,
+				controller.NodeRole: leader_election.RoleReplica,
 			},
 		}),
 	})
@@ -70,6 +71,20 @@ func (f *Framework) MakeNewLeaderManually(meta metav1.ObjectMeta, newLeaderPodNa
 	ler.HolderIdentity = newLeaderPodName
 	err = configMapLock.Update(*ler)
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func (f *Framework) CurrentLeader(meta metav1.ObjectMeta) {
+	configMapLock := resourcelock.ConfigMapLock{
+		Client: f.kubeClient.CoreV1(),
+		ConfigMapMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%v-leader-lock", meta.Name),
+			Namespace: meta.Namespace,
+		},
+	}
+
+	// LeaderElectionRecord
+	ler, _ := configMapLock.Get()
+	oneliners.PrettyJson(ler, "leader")
 }
 
 func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertion {

@@ -14,12 +14,13 @@ gracefully_shutdown_host() {
   echo "Gracefully shutting down database"
 
   # start postgres server in background
-  postgres >/dev/null 2>&1 &
+#  postgres >/dev/null 2>&1 &
+  postgres >/dev/null &
 
   # Waiting for running Postgres
   while true; do
-    echo "Attempting pg_isready on localhost"
-    pg_isready --timeout=2 &>/dev/null && break
+    echo "Attempting pg_ctl status on localhost"
+    pg_ctl status && break
     sleep 2
   done
 
@@ -81,11 +82,15 @@ setup_postgresql_config() {
 }
 
 # Waiting for running Postgres
-while true; do
+TIMER=0
+while [[ ${TIMER} -le 30 ]]; do
   pg_isready --host="$PRIMARY_HOST" --timeout=2 &>/dev/null && break
   echo "Attempting pg_isready on primary"
+  TIMER=$((TIMER + 1))
   sleep 2
 done
+
+pg_isready --host="$PRIMARY_HOST" --timeout=2
 
 while true; do
   psql -h "$PRIMARY_HOST" --no-password --username=postgres --command="select now();" &>/dev/null && break
