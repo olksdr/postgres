@@ -161,17 +161,14 @@ func (f *Framework) EventuallyCountTable(meta metav1.ObjectMeta, clientPodName, 
 			defer db.Close()
 
 			if err := f.CheckPostgres(db); err != nil {
-				fmt.Println(">>>>>>>>>>>>>>", err)
 				return -1
 			}
 
 			res, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema='data'")
 			if err != nil {
-				fmt.Println(">>>>>>>>>>>>>>", err)
 				return -1
 			}
 
-			fmt.Println(">>>>>>>>>>>>>>", len(res))
 			return len(res)
 		},
 		time.Minute*10,
@@ -197,17 +194,13 @@ func (f *Framework) EventuallyCountTableFromPrimary(meta metav1.ObjectMeta, dbNa
 			defer db.Close()
 
 			if err := f.CheckPostgres(db); err != nil {
-				fmt.Println(">>>>>>>>>>>>>>", err)
 				return -1
 			}
 
 			res, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema='data'")
 			if err != nil {
-				fmt.Println(">>>>>>>>>>>>>>", err)
 				return -1
 			}
-
-			fmt.Println(">>>>>>>>>>>>>>", len(res))
 			return len(res)
 		},
 		time.Minute*10,

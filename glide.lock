@@ -1,5 +1,5 @@
-hash: 0885997d2d2ed9264d58f8f7151cb0f680879c5ff3bd981afb866a3bf22429d7
-updated: 2019-01-18T12:08:30.603166814+06:00
+hash: 4a0f9db53b05c477b45852d1469a13fcdd99e1bee34cda53de17fc322678304a
+updated: 2019-01-18T17:52:15.418186555+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -350,7 +350,7 @@ imports:
 - name: github.com/json-iterator/go
   version: 1624edc4454b8682399def8740d46db5e4362ba4
 - name: github.com/kubedb/apimachinery
-  version: 5d5229ee06907308f61d61b09ff07ea7aa8c2c0c
+  version: 4b8f84786092ece5cebed7626b8b42a54d111105
   subpackages:
   - apis
   - apis/authorization
@@ -500,8 +500,6 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: 298182f68c66c05229eb03ac171abe6e309ee79a
-- name: github.com/the-redback/go-oneliners
-  version: 26ff20adbb55acfceb4c2570b39d1ab11a13d78c
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:

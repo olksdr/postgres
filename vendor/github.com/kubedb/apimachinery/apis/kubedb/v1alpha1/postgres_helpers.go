@@ -9,6 +9,7 @@ import (
 	"github.com/kubedb/apimachinery/apis"
 	"github.com/kubedb/apimachinery/apis/kubedb"
 	apps "k8s.io/api/apps/v1"
+	core "k8s.io/api/core/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	appcat "kmodules.xyz/custom-resources/apis/appcatalog/v1alpha1"
 	mona "kmodules.xyz/monitoring-agent-api/api/v1"
@@ -214,6 +215,27 @@ func (p *PostgresSpec) SetDefaults() {
 		}
 
 		p.Init.PostgresWAL.PITR = pitr
+	}
+	if p.PodTemplate.Spec.Lifecycle == nil {
+		p.PodTemplate.Spec.Lifecycle = &core.Lifecycle{
+			PreStop: &core.Handler{
+				Exec: &core.ExecAction{
+					Command: []string{"su", "postgres", "-c", "pg_ctl -D ${PGDATA} stop"},
+				},
+			},
+		}
+	}
+	if p.PodTemplate.Spec.LivenessProbe == nil {
+		p.PodTemplate.Spec.LivenessProbe = &core.Probe{
+			Handler: core.Handler{
+				Exec: &core.ExecAction{
+					Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
+				},
+			},
+			InitialDelaySeconds: 900, // make it long enough to initialize wal-g
+			PeriodSeconds:       20,
+			TimeoutSeconds:      5,
+		}
 	}
 }
 

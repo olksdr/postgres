@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#TODO: delete
-set -x
-
 mkdir -p "$PGDATA"
 rm -rf "$PGDATA"/*
 chmod 0700 "$PGDATA"

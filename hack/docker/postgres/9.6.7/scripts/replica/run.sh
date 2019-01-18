@@ -32,7 +32,7 @@ take_pg_basebackup() {
   chmod 0700 "$PGDATA"
 
   echo "Taking base backup."
-  pg_basebackup -X fetch --no-password --pgdata "$PGDATA" --username=postgres --host="$PRIMARY_HOST"
+  pg_basebackup -c fast -X fetch --no-password --pgdata "$PGDATA" --username=postgres --host="$PRIMARY_HOST"
 }
 
 setup_postgresql_config() {

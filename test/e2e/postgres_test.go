@@ -295,15 +295,11 @@ var _ = Describe("Postgres", func() {
 				if *postgres.Spec.StandbyMode == api.HotPostgresStandbyMode ||
 					*postgres.Spec.StandbyMode == api.DeprecatedHotStandby {
 
-					fmt.Println(">>>>>>>>>>>>>> totalTable", totalTable)
-
 					By("Checking Table in All pods [read-only connection behaviour]")
 					f.CountFromAllPods(postgres.ObjectMeta, dbName, dbUser, totalTable)
 
 				} else {
 					// Default: warm standby
-					fmt.Println(">>>>>>>>>>>>>> totalTable", totalTable)
-
 					By("Checking Table")
 					f.EventuallyCountTableFromPrimary(postgres.ObjectMeta, dbName, dbUser).
 						Should(Equal(totalTable))
@@ -608,7 +604,7 @@ var _ = Describe("Postgres", func() {
 								Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
 							},
 						},
-						InitialDelaySeconds: 100, // TODO: make it long enough to initialize wal-g
+						InitialDelaySeconds: 120, // TODO: make it long enough to initialize wal-g
 						PeriodSeconds:       10,  // TODO: every 1 minute (may b)
 						TimeoutSeconds:      5,
 					}
@@ -738,7 +734,7 @@ var _ = Describe("Postgres", func() {
 						Should(Equal(totalTable))
 				}
 
-				Context("Archive and Initialize from wal archive", func() {
+				XContext("Archive and Initialize from wal archive", func() {
 
 					It("should archive and should resume from archive successfully", func() {
 						// -- > 1st Postgres < --
@@ -776,53 +772,6 @@ var _ = Describe("Postgres", func() {
 				})
 
 				Context("failover scenerio", func() {
-
-					Context("Warm Standby", func() {
-
-						BeforeEach(func() {
-							standByMode := api.WarmPostgresStandbyMode
-							postgres.Spec.StandbyMode = &standByMode
-							totalTable = 0
-							postgres.Spec.Replicas = types.Int32P(4)
-							// TODO: take from setDefaults then reduce initial time
-							postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
-								Handler: core.Handler{
-									Exec: &core.ExecAction{
-										Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
-									},
-								},
-								InitialDelaySeconds: 100, // TODO: make it long enough to initialize wal-g
-								PeriodSeconds:       10,  // TODO: every 1 minute (may b)
-								TimeoutSeconds:      5,
-							}
-							// <== End
-
-						})
-
-						It("should archive and initialize in failover scenario", func() {
-							// -- > 1st Postgres < --
-							err := f.CreateSecret(secret)
-							Expect(err).NotTo(HaveOccurred())
-
-							// Create Postgres
-							shouldFailoverSuccessfully()
-
-							// Now test initialize fromarchive
-							shouldArchiveAndInitialize()
-						})
-
-						It("should archive and initialize in conflict timeline failover scenario", func() {
-							// -- > 1st Postgres < --
-							err := f.CreateSecret(secret)
-							Expect(err).NotTo(HaveOccurred())
-
-							// Create Postgres
-							shouldFailoverConflictTimeline()
-
-							// Now test initialize fromarchive
-							shouldArchiveAndInitialize()
-						})
-					})
 
 					Context("Hot Standby", func() {
 
@@ -871,6 +820,50 @@ var _ = Describe("Postgres", func() {
 						})
 					})
 
+					Context("Warm Standby", func() {
+
+						BeforeEach(func() {
+							standByMode := api.WarmPostgresStandbyMode
+							postgres.Spec.StandbyMode = &standByMode
+							totalTable = 0
+							postgres.Spec.Replicas = types.Int32P(4)
+							// TODO: take from setDefaults then reduce initial time (may b)
+							postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
+								Handler: core.Handler{
+									Exec: &core.ExecAction{
+										Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
+									},
+								},
+								InitialDelaySeconds: 100, // TODO: make it long enough to initialize wal-g
+							}
+							// <== End
+
+						})
+
+						It("should archive and initialize in failover scenario", func() {
+							// -- > 1st Postgres < --
+							err := f.CreateSecret(secret)
+							Expect(err).NotTo(HaveOccurred())
+
+							// Create Postgres
+							shouldFailoverSuccessfully()
+
+							// Now test initialize fromarchive
+							shouldArchiveAndInitialize()
+						})
+
+						It("should archive and initialize in conflict timeline failover scenario", func() {
+							// -- > 1st Postgres < --
+							err := f.CreateSecret(secret)
+							Expect(err).NotTo(HaveOccurred())
+
+							// Create Postgres
+							shouldFailoverConflictTimeline()
+
+							// Now test initialize fromarchive
+							shouldArchiveAndInitialize()
+						})
+					})
 				})
 
 				Context("WipeOut wal data", func() {

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appscode/go/log"
 	v1 "github.com/appscode/kutil/core/v1"
 	"github.com/appscode/kutil/tools/exec"
 	"github.com/kubedb/postgres/pkg/controller"
@@ -169,9 +168,7 @@ func (f *Framework) EventuallyStreamingReplication(meta metav1.ObjectMeta, clien
 			for _, result := range results {
 				applicationName := string(result["application_name"])
 				state := string(result["state"])
-				log.Debugln("application_name", applicationName, "state", state)
-				Expect(strings.HasPrefix(applicationName, meta.Name)).Should(BeTrue())
-				if state != "streaming" {
+				if state != "streaming" || !strings.HasPrefix(applicationName, meta.Name) {
 					return -1
 				}
 			}
