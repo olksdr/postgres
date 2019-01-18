@@ -63,7 +63,7 @@ func (f *Framework) EventuallyAPIServiceReady() GomegaAsyncAssertion {
 			}
 			return nil
 		},
-		time.Minute*2,
+		time.Minute*3,
 		time.Second*5,
 	)
 }

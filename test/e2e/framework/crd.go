@@ -29,7 +29,7 @@ func (f *Framework) EventuallyCRD() GomegaAsyncAssertion {
 
 			return nil
 		},
-		time.Minute*2,
+		time.Minute*3,
 		time.Second*10,
 	)
 }

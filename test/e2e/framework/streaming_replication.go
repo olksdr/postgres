@@ -2,12 +2,15 @@ package framework
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/appscode/go/log"
+	v1 "github.com/appscode/kutil/core/v1"
+	"github.com/appscode/kutil/tools/exec"
 	"github.com/kubedb/postgres/pkg/controller"
 	"github.com/kubedb/postgres/pkg/leader_election"
 	. "github.com/onsi/gomega"
-	oneliners "github.com/the-redback/go-oneliners"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
@@ -23,11 +26,12 @@ func (f *Framework) GetPrimaryPodName(meta metav1.ObjectMeta) string {
 
 	pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
 		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
-			MatchLabels: map[string]string{
+			MatchLabels: v1.UpsertMap(map[string]string{
 				controller.NodeRole: leader_election.RolePrimary,
-			},
+			}, postgres.OffshootSelectors()),
 		}),
 	})
+
 	Expect(err).NotTo(HaveOccurred())
 	Expect(len(pods.Items)).To(Equal(1))
 
@@ -71,20 +75,6 @@ func (f *Framework) MakeNewLeaderManually(meta metav1.ObjectMeta, newLeaderPodNa
 	ler.HolderIdentity = newLeaderPodName
 	err = configMapLock.Update(*ler)
 	Expect(err).NotTo(HaveOccurred())
-}
-
-func (f *Framework) CurrentLeader(meta metav1.ObjectMeta) {
-	configMapLock := resourcelock.ConfigMapLock{
-		Client: f.kubeClient.CoreV1(),
-		ConfigMapMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%v-leader-lock", meta.Name),
-			Namespace: meta.Namespace,
-		},
-	}
-
-	// LeaderElectionRecord
-	ler, _ := configMapLock.Get()
-	oneliners.PrettyJson(ler, "leader")
 }
 
 func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertion {
@@ -139,4 +129,55 @@ func (f *Framework) CountFromAllPods(meta metav1.ObjectMeta, dbName, dbUser stri
 			dbName, dbUser,
 		).Should(Equal(count))
 	}
+}
+
+// PromotePodToMaster
+func (f *Framework) PromotePodToMaster(meta metav1.ObjectMeta, clientPodName string) {
+	pod, err := f.kubeClient.CoreV1().Pods(meta.Namespace).Get(clientPodName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+
+	str, err := exec.ExecIntoPod(f.restConfig, pod, "su", "postgres", "-c", "pg_ctl -D ${PGDATA} promote")
+	Expect(err).NotTo(HaveOccurred())
+
+	fmt.Println(str)
+}
+
+func (f *Framework) EventuallyStreamingReplication(meta metav1.ObjectMeta, clientPodName, dbName, userName string) GomegaAsyncAssertion {
+	return Eventually(
+		func() int {
+			tunnel, err := f.ForwardPort(meta, clientPodName)
+			if err != nil {
+				return -1
+			}
+			defer tunnel.Close()
+
+			db, err := f.GetPostgresClient(tunnel, dbName, userName)
+			if err != nil {
+				return -1
+			}
+			defer db.Close()
+
+			if err := f.CheckPostgres(db); err != nil {
+				return -1
+			}
+
+			results, err := db.Query("select * from pg_stat_replication;")
+			if err != nil {
+				return -1
+			}
+
+			for _, result := range results {
+				applicationName := string(result["application_name"])
+				state := string(result["state"])
+				log.Debugln("application_name", applicationName, "state", state)
+				Expect(strings.HasPrefix(applicationName, meta.Name)).Should(BeTrue())
+				if state != "streaming" {
+					return -1
+				}
+			}
+			return len(results)
+		},
+		time.Minute*5,
+		time.Second*5,
+	)
 }

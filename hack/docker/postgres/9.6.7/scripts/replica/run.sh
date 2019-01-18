@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-#TODO: remoxe -x
-set -xe
+set e
 
 echo "Running as Replica"
 
@@ -14,7 +13,6 @@ gracefully_shutdown_host() {
   echo "Gracefully shutting down database"
 
   # start postgres server in background
-#  postgres >/dev/null 2>&1 &
   postgres >/dev/null &
 
   # Waiting for running Postgres

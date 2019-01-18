@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# TODO: remove -x
-set -xe
+set -e
 echo "-------------- Hostname: $HOSTNAME"
 
 export PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
