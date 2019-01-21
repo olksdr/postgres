@@ -649,6 +649,7 @@ var _ = Describe("Postgres", func() {
 					postgres.Spec.Replicas = types.Int32P(4)
 					standByMode := api.HotPostgresStandbyMode
 					postgres.Spec.StandbyMode = &standByMode
+					postgres.Spec.DatabaseSecret = oldPostgres.Spec.DatabaseSecret
 					postgres.Spec.Archiver = &api.PostgresArchiverSpec{
 						Storage: &store.Backend{
 							StorageSecretName: secret.Name,
@@ -709,6 +710,7 @@ var _ = Describe("Postgres", func() {
 					postgres.Spec.Replicas = types.Int32P(4)
 					standByMode = api.HotPostgresStandbyMode
 					postgres.Spec.StandbyMode = &standByMode
+					postgres.Spec.DatabaseSecret = oldPostgres.Spec.DatabaseSecret
 					postgres.Spec.Init = &api.InitSpec{
 						PostgresWAL: &api.PostgresWALSourceSpec{
 							Backend: store.Backend{
@@ -787,12 +789,24 @@ var _ = Describe("Postgres", func() {
 										Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
 									},
 								},
-								InitialDelaySeconds: 100, // TODO: make it long enough to initialize wal-g
+								InitialDelaySeconds: 300, // TODO: make it long enough to initialize wal-g
 								PeriodSeconds:       10,  // TODO: every 1 minute (may b)
 								TimeoutSeconds:      5,
 							}
 							// <== End
 
+						})
+
+						It("should archive and initialize when 0'th pod is not leader", func() {
+							// -- > 1st Postgres < --
+							err := f.CreateSecret(secret)
+							Expect(err).NotTo(HaveOccurred())
+
+							// Create Postgres
+							shouldResumeAfterDeletion()
+
+							// Now test initialize fromarchive
+							shouldArchiveAndInitialize()
 						})
 
 						It("should archive and initialize in failover scenario", func() {
@@ -838,6 +852,18 @@ var _ = Describe("Postgres", func() {
 							}
 							// <== End
 
+						})
+
+						It("should archive and initialize when 0'th pod is not leader", func() {
+							// -- > 1st Postgres < --
+							err := f.CreateSecret(secret)
+							Expect(err).NotTo(HaveOccurred())
+
+							// Create Postgres
+							shouldResumeAfterDeletion()
+
+							// Now test initialize fromarchive
+							shouldArchiveAndInitialize()
 						})
 
 						It("should archive and initialize in failover scenario", func() {

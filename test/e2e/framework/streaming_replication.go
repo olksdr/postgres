@@ -92,7 +92,7 @@ func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertio
 			}
 			return pods.Items[0].Name
 		},
-		time.Minute*5,
+		time.Minute*10,
 		time.Second*5,
 	)
 }
@@ -110,7 +110,7 @@ func (f *Framework) EventuallyLeaderExists(meta metav1.ObjectMeta) GomegaAsyncAs
 			Expect(err).NotTo(HaveOccurred())
 			return len(pods.Items) == 1
 		},
-		time.Minute*5,
+		time.Minute*10,
 		time.Second*5,
 	)
 }
@@ -174,7 +174,7 @@ func (f *Framework) EventuallyStreamingReplication(meta metav1.ObjectMeta, clien
 			}
 			return len(results)
 		},
-		time.Minute*5,
+		time.Minute*10,
 		time.Second*5,
 	)
 }

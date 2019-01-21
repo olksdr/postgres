@@ -64,19 +64,19 @@ setup_postgresql_config() {
 
   mv /tmp/postgresql.conf "$PGDATA/postgresql.conf"
 
-  # push base-backup
-  if [ "$ARCHIVE" == "wal-g" ]; then
-    # set walg ENV
-    CRED_PATH="/srv/wal-g/archive/secrets"
-    export WALE_S3_PREFIX=$(echo "$ARCHIVE_S3_PREFIX")
-    export AWS_ACCESS_KEY_ID=$(cat "$CRED_PATH/AWS_ACCESS_KEY_ID")
-    export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
-
-    # setup postgresql.conf
-    echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
-    echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
-    echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
-  fi
+#  # push base-backup
+#  if [ "$ARCHIVE" == "wal-g" ]; then
+#    # set walg ENV
+#    CRED_PATH="/srv/wal-g/archive/secrets"
+#    export WALE_S3_PREFIX=$(echo "$ARCHIVE_S3_PREFIX")
+#    export AWS_ACCESS_KEY_ID=$(cat "$CRED_PATH/AWS_ACCESS_KEY_ID")
+#    export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
+#
+#    # setup postgresql.conf
+#    echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
+#    echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
+#    echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
+#  fi
 }
 
 # Waiting for running Postgres
