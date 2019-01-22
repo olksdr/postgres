@@ -48,9 +48,9 @@ func (f *Framework) GetArbitraryStandbyPodName(meta metav1.ObjectMeta) string {
 
 	pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
 		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
-			MatchLabels: map[string]string{
+			MatchLabels: v1.UpsertMap(map[string]string{
 				controller.NodeRole: leader_election.RoleReplica,
-			},
+			}, postgres.OffshootSelectors()),
 		}),
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -77,13 +77,16 @@ func (f *Framework) MakeNewLeaderManually(meta metav1.ObjectMeta, newLeaderPodNa
 }
 
 func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+	postgres, err := f.GetPostgres(meta)
+	Expect(err).NotTo(HaveOccurred())
+
 	return Eventually(
 		func() string {
 			pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
 				LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
-					MatchLabels: map[string]string{
+					MatchLabels: v1.UpsertMap(map[string]string{
 						controller.NodeRole: leader_election.RolePrimary,
-					},
+					}, postgres.OffshootSelectors()),
 				}),
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -98,13 +101,16 @@ func (f *Framework) EventuallyLeader(meta metav1.ObjectMeta) GomegaAsyncAssertio
 }
 
 func (f *Framework) EventuallyLeaderExists(meta metav1.ObjectMeta) GomegaAsyncAssertion {
+	postgres, err := f.GetPostgres(meta)
+	Expect(err).NotTo(HaveOccurred())
+
 	return Eventually(
 		func() bool {
 			pods, err := f.kubeClient.CoreV1().Pods(meta.Namespace).List(metav1.ListOptions{
 				LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
-					MatchLabels: map[string]string{
+					MatchLabels: v1.UpsertMap(map[string]string{
 						controller.NodeRole: leader_election.RolePrimary,
-					},
+					}, postgres.OffshootSelectors()),
 				}),
 			})
 			Expect(err).NotTo(HaveOccurred())

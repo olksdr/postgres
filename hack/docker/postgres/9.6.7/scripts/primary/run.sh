@@ -39,12 +39,12 @@ if [ "$ARCHIVE" == "wal-g" ]; then
   export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
 
   sed -i "/archive_command/c\archive_command = 'wal-g wal-push %p'" $PGDATA/postgresql.conf
-  sed -i "/archive_mode/c\archive_mode = always" $PGDATA/postgresql.conf
+  sed -i "/archive_mode/c\archive_mode = on" $PGDATA/postgresql.conf # todo: alwasy
   sed -i "/archive_timeout/c\archive_timeout = 60" $PGDATA/postgresql.conf
 
   pg_ctl -D "$PGDATA" -w start
   PGUSER="postgres" wal-g backup-push "$PGDATA" >/dev/null
-  pg_ctl -D "$PGDATA" -m fast -w stop
+  pg_ctl -D "$PGDATA" -m smart -w stop # todo: fast
 fi
 
 exec postgres

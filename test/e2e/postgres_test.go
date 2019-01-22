@@ -568,17 +568,12 @@ var _ = Describe("Postgres", func() {
 					postgres.Spec.StandbyMode = &standByMode
 					totalTable = 0
 					postgres.Spec.Replicas = types.Int32P(4)
-					// TODO: take from setDefaults then reduce initial time
-					postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
-						Handler: core.Handler{
-							Exec: &core.ExecAction{
-								Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
-							},
-						},
-						InitialDelaySeconds: 200, // TODO: make it long enough to initialize wal-g
-						PeriodSeconds:       10,  // TODO: every 1 minute (may b)
-						TimeoutSeconds:      5,
-					}
+					// Take liveness probe and reduce times
+					demoPostgres := f.Postgres()
+					demoPostgres.SetDefaults()
+					postgres.Spec.PodTemplate.Spec.LivenessProbe = demoPostgres.Spec.PodTemplate.Spec.LivenessProbe
+					postgres.Spec.PodTemplate.Spec.LivenessProbe.InitialDelaySeconds = 120
+					postgres.Spec.PodTemplate.Spec.LivenessProbe.PeriodSeconds = 10
 					// <== End
 				})
 
@@ -597,17 +592,12 @@ var _ = Describe("Postgres", func() {
 					postgres.Spec.StandbyMode = &standByMode
 					totalTable = 0
 					postgres.Spec.Replicas = types.Int32P(4)
-					// TODO: take from setDefaults then reduce initial time
-					postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
-						Handler: core.Handler{
-							Exec: &core.ExecAction{
-								Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
-							},
-						},
-						InitialDelaySeconds: 120, // TODO: make it long enough to initialize wal-g
-						PeriodSeconds:       10,  // TODO: every 1 minute (may b)
-						TimeoutSeconds:      5,
-					}
+					// Take liveness probe and reduce times
+					demoPostgres := f.Postgres()
+					demoPostgres.SetDefaults()
+					postgres.Spec.PodTemplate.Spec.LivenessProbe = demoPostgres.Spec.PodTemplate.Spec.LivenessProbe
+					postgres.Spec.PodTemplate.Spec.LivenessProbe.InitialDelaySeconds = 120
+					postgres.Spec.PodTemplate.Spec.LivenessProbe.PeriodSeconds = 10
 					// <== End
 				})
 
@@ -620,7 +610,7 @@ var _ = Describe("Postgres", func() {
 				It("conflict timeline should failover successfully", shouldFailoverConflictTimeline)
 			})
 
-			FContext("Archive with wal-g", func() {
+			Context("Archive with wal-g", func() {
 
 				BeforeEach(func() {
 					secret = f.SecretForS3Backend()
@@ -679,6 +669,10 @@ var _ = Describe("Postgres", func() {
 						postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
 						Should(BeTrue())
 
+					By("Checking Table")
+					f.EventuallyCountTableFromPrimary(postgres.ObjectMeta, dbName, dbUser).
+						Should(Equal(totalTable))
+
 					By("Creating Table")
 					f.EventuallyCreateTable(postgres.ObjectMeta, dbName, dbUser, 3).
 						Should(BeTrue())
@@ -736,7 +730,14 @@ var _ = Describe("Postgres", func() {
 						Should(Equal(totalTable))
 				}
 
-				XContext("Archive and Initialize from wal archive", func() {
+				Context("Archive and Initialize from wal archive", func() {
+
+					BeforeEach(func() {
+						standByMode := api.HotPostgresStandbyMode
+						postgres.Spec.StandbyMode = &standByMode
+						totalTable = 0
+						postgres.Spec.Replicas = types.Int32P(4)
+					})
 
 					It("should archive and should resume from archive successfully", func() {
 						// -- > 1st Postgres < --
@@ -769,6 +770,16 @@ var _ = Describe("Postgres", func() {
 							f.EventuallyWalDataFound(postgres).Should(BeTrue())
 						}
 
+						// Delete and create again
+						pauseAndResumeAgain()
+
+						checkDataAcrossReplication()
+
+						By("Checking Streaming")
+						f.EventuallyStreamingReplication(
+							postgres.ObjectMeta, f.GetPrimaryPodName(postgres.ObjectMeta), dbName, dbUser).
+							Should(Equal(int(*postgres.Spec.Replicas) - 1))
+
 						shouldArchiveAndInitialize()
 					})
 				})
@@ -782,17 +793,12 @@ var _ = Describe("Postgres", func() {
 							postgres.Spec.StandbyMode = &standByMode
 							totalTable = 0
 							postgres.Spec.Replicas = types.Int32P(4)
-							// TODO: take from setDefaults then reduce initial time
-							postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
-								Handler: core.Handler{
-									Exec: &core.ExecAction{
-										Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
-									},
-								},
-								InitialDelaySeconds: 300, // TODO: make it long enough to initialize wal-g
-								PeriodSeconds:       10,  // TODO: every 1 minute (may b)
-								TimeoutSeconds:      5,
-							}
+							// Take liveness probe and reduce times
+							demoPostgres := f.Postgres()
+							demoPostgres.SetDefaults()
+							postgres.Spec.PodTemplate.Spec.LivenessProbe = demoPostgres.Spec.PodTemplate.Spec.LivenessProbe
+							postgres.Spec.PodTemplate.Spec.LivenessProbe.InitialDelaySeconds = 300
+							postgres.Spec.PodTemplate.Spec.LivenessProbe.PeriodSeconds = 10
 							// <== End
 
 						})
@@ -834,22 +840,19 @@ var _ = Describe("Postgres", func() {
 						})
 					})
 
-					Context("Warm Standby", func() {
+					FContext("Warm Standby", func() {
 
 						BeforeEach(func() {
 							standByMode := api.WarmPostgresStandbyMode
 							postgres.Spec.StandbyMode = &standByMode
 							totalTable = 0
 							postgres.Spec.Replicas = types.Int32P(4)
-							// TODO: take from setDefaults then reduce initial time (may b)
-							postgres.Spec.PodTemplate.Spec.LivenessProbe = &core.Probe{
-								Handler: core.Handler{
-									Exec: &core.ExecAction{
-										Command: []string{"/bin/sh", "-c", "/scripts/check.sh"},
-									},
-								},
-								InitialDelaySeconds: 100, // TODO: make it long enough to initialize wal-g
-							}
+							// Take liveness probe and reduce times
+							demoPostgres := f.Postgres()
+							demoPostgres.SetDefaults()
+							postgres.Spec.PodTemplate.Spec.LivenessProbe = demoPostgres.Spec.PodTemplate.Spec.LivenessProbe
+							postgres.Spec.PodTemplate.Spec.LivenessProbe.InitialDelaySeconds = 300
+							postgres.Spec.PodTemplate.Spec.LivenessProbe.PeriodSeconds = 10
 							// <== End
 
 						})

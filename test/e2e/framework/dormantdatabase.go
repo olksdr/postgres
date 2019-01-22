@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	"github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1/util"
 	. "github.com/onsi/gomega"
@@ -107,7 +109,15 @@ func (f *Framework) EventuallyWipedOut(meta metav1.ObjectMeta) GomegaAsyncAssert
 				return err
 			}
 			if len(secretList.Items) > 0 {
-				return fmt.Errorf("secrets have not wiped out yet")
+				secretsUsed, er2 := f.secretsUsedByPeers(meta)
+				if er2 != nil {
+					return er2
+				}
+				for _, secret := range secretList.Items {
+					if !secretsUsed.Has(secret.Name) {
+						return fmt.Errorf("secrets have not wiped out yet")
+					}
+				}
 			}
 
 			// check if appbinds are wiped out
@@ -125,9 +135,41 @@ func (f *Framework) EventuallyWipedOut(meta metav1.ObjectMeta) GomegaAsyncAssert
 
 			return nil
 		},
-		time.Minute*10,
+		time.Minute*5,
 		time.Second*5,
 	)
+}
+
+func (f *Framework) secretsUsedByPeers(meta metav1.ObjectMeta) (sets.String, error) {
+	secretUsed := sets.NewString()
+
+	dbList, err := f.extClient.KubedbV1alpha1().Postgreses(meta.Namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, es := range dbList.Items {
+		if es.Name != meta.Name {
+			secretUsed.Insert(es.Spec.GetSecrets()...)
+		}
+	}
+
+	labelMap := map[string]string{
+		api.LabelDatabaseKind: api.ResourceKindPostgres,
+	}
+	drmnList, err := f.extClient.KubedbV1alpha1().DormantDatabases(meta.Namespace).List(
+		metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labelMap).String(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	for _, ddb := range drmnList.Items {
+		if ddb.Name != meta.Name {
+			secretUsed.Insert(ddb.GetDatabaseSecrets()...)
+		}
+	}
+	return secretUsed, nil
 }
 
 func (f *Framework) CleanDormantDatabase() {
@@ -144,7 +186,7 @@ func (f *Framework) CleanDormantDatabase() {
 			fmt.Printf("error Patching DormantDatabase. error: %v", err)
 		}
 	}
-	if err := f.extClient.KubedbV1alpha1().DormantDatabases(f.namespace).DeleteCollection(deleteInBackground(), metav1.ListOptions{}); err != nil {
+	if err := f.extClient.KubedbV1alpha1().DormantDatabases(f.namespace).DeleteCollection(deleteInForeground(), metav1.ListOptions{}); err != nil {
 		fmt.Printf("error in deletion of Dormant Database. Error: %v", err)
 	}
 }

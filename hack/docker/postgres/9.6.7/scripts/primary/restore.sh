@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 mkdir -p "$PGDATA"
 rm -rf "$PGDATA"/*
 chmod 0700 "$PGDATA"
@@ -67,10 +69,10 @@ if [ "$ARCHIVE" == "wal-g" ]; then
   # setup postgresql.conf
   echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
   echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
-  echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
+  echo "archive_mode = on" >>"$PGDATA/postgresql.conf" # todo: alwasy
 fi
 
-rm "$PGDATA/recovery.done" &>/dev/null
+rm "$PGDATA/recovery.done" &>/dev/null || true
 
 # start server for recovery process
 pg_ctl -D "$PGDATA" -W start >/dev/null
@@ -85,6 +87,6 @@ while [ ! -e "$PGDATA/recovery.done" ]; do
 done
 
 # create PID if misssing
-postmaster -D "$PGDATA" &>/dev/null
+postmaster -D "$PGDATA" &>/dev/null || true
 
 pg_ctl -D "$PGDATA" -w stop >/dev/null

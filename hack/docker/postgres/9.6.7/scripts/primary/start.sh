@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 mkdir -p "$PGDATA"
 rm -rf "$PGDATA"/*
 chmod 0700 "$PGDATA"
@@ -89,5 +91,5 @@ if [ "$ARCHIVE" == "wal-g" ]; then
   # setup postgresql.conf
   echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
   echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
-  echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
+  echo "archive_mode = on" >>"$PGDATA/postgresql.conf" #todo: alwasy
 fi

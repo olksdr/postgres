@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set e
+set -e
 
 echo "Running as Replica"
 
@@ -63,20 +63,6 @@ setup_postgresql_config() {
   fi
 
   mv /tmp/postgresql.conf "$PGDATA/postgresql.conf"
-
-#  # push base-backup
-#  if [ "$ARCHIVE" == "wal-g" ]; then
-#    # set walg ENV
-#    CRED_PATH="/srv/wal-g/archive/secrets"
-#    export WALE_S3_PREFIX=$(echo "$ARCHIVE_S3_PREFIX")
-#    export AWS_ACCESS_KEY_ID=$(cat "$CRED_PATH/AWS_ACCESS_KEY_ID")
-#    export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
-#
-#    # setup postgresql.conf
-#    echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
-#    echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
-#    echo "archive_mode = always" >>"$PGDATA/postgresql.conf"
-#  fi
 }
 
 # Waiting for running Postgres
@@ -97,7 +83,6 @@ while true; do
 done
 
 if [ ! -e "$PGDATA/PG_VERSION" ]; then
-  echo "asdfasdfsdf"
   take_pg_basebackup
 else
   # pg_rewind. https://www.postgresql.org/docs/9.6/app-pgrewind.html
@@ -166,5 +151,19 @@ else
 fi
 
 setup_postgresql_config
+
+# push base-backup
+if [ "$ARCHIVE" == "wal-g" ]; then
+  # set walg ENV
+  CRED_PATH="/srv/wal-g/archive/secrets"
+  export WALE_S3_PREFIX=$(echo "$ARCHIVE_S3_PREFIX")
+  export AWS_ACCESS_KEY_ID=$(cat "$CRED_PATH/AWS_ACCESS_KEY_ID")
+  export AWS_SECRET_ACCESS_KEY=$(cat "$CRED_PATH/AWS_SECRET_ACCESS_KEY")
+
+  # setup postgresql.conf
+  echo "archive_command = 'wal-g wal-push %p'" >>"$PGDATA/postgresql.conf"
+  echo "archive_timeout = 60" >>"$PGDATA/postgresql.conf"
+  echo "archive_mode = on" >>"$PGDATA/postgresql.conf" # todo: alwasy
+fi
 
 exec postgres
