@@ -158,9 +158,26 @@ func (c *Controller) createReplicasService(postgres *api.Postgres) (kutil.VerbTy
 
 	_, ok, err := core_util.CreateOrPatchService(c.Client, meta, func(in *core.Service) *core.Service {
 		core_util.EnsureOwnerReference(&in.ObjectMeta, ref)
-		in.Labels = postgres.OffshootSelectors()
+		in.Labels = postgres.OffshootLabels()
+		in.Annotations = postgres.Spec.ServiceTemplate.Annotations
+
 		in.Spec.Selector = postgres.OffshootSelectors()
+		in.Spec.Selector[NodeRole] = "replica"
 		in.Spec.Ports = upsertServicePort(in, postgres)
+
+		if postgres.Spec.ServiceTemplate.Spec.ClusterIP != "" {
+			in.Spec.ClusterIP = postgres.Spec.ServiceTemplate.Spec.ClusterIP
+		}
+		if postgres.Spec.ServiceTemplate.Spec.Type != "" {
+			in.Spec.Type = postgres.Spec.ServiceTemplate.Spec.Type
+		}
+		in.Spec.ExternalIPs = postgres.Spec.ServiceTemplate.Spec.ExternalIPs
+		in.Spec.LoadBalancerIP = postgres.Spec.ServiceTemplate.Spec.LoadBalancerIP
+		in.Spec.LoadBalancerSourceRanges = postgres.Spec.ServiceTemplate.Spec.LoadBalancerSourceRanges
+		in.Spec.ExternalTrafficPolicy = postgres.Spec.ServiceTemplate.Spec.ExternalTrafficPolicy
+		if postgres.Spec.ServiceTemplate.Spec.HealthCheckNodePort > 0 {
+			in.Spec.HealthCheckNodePort = postgres.Spec.ServiceTemplate.Spec.HealthCheckNodePort
+		}
 		return in
 	})
 	return ok, err
