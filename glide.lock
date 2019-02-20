@@ -1,5 +1,5 @@
-hash: 303f5f2a5a38cd1fd3b71e190508f7a16d79a81c4e4a248af41965f7e496afd0
-updated: 2019-02-18T14:53:08.407375173-08:00
+hash: 5cbeef3df3bf610625764285ba3e1616eaa965b79260508e86d2215493e88290
+updated: 2019-02-20T05:45:00.396640242-08:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -250,7 +250,7 @@ imports:
 - name: github.com/go-openapi/jsonreference
   version: 13c6e3589ad90f49bd3e3bbe2c2cb3d7a4142272
 - name: github.com/go-openapi/spec
-  version: 5bae59e25b21498baea7f9d46e9c147ec106a42e
+  version: 1de3e0542de65ad8d75452a595886fdd0befb363
 - name: github.com/go-openapi/swag
   version: f3f9494671f93fcff853e3c6e9e948b3eb71e590
 - name: github.com/go-xorm/builder
@@ -393,7 +393,7 @@ imports:
   - pkg/eventer
   - pkg/validator
 - name: github.com/lib/pq
-  version: 4ded0e9383f75c197b3a2aaa6d590ac52df6fd79
+  version: 88edab0803230a3898347e77b474f8c1820a1f20
   subpackages:
   - oid
 - name: github.com/mailru/easyjson
