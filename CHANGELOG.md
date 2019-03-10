@@ -1,5 +1,29 @@
 # Change Log
 
+## [0.10.0](https://github.com/kubedb/postgres/tree/0.10.0) (2019-02-20)
+[Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0...0.10.0)
+
+**Merged pull requests:**
+
+- Fix: Update retryPeriod default value in Leaderelection Pod [\#261](https://github.com/kubedb/postgres/pull/261) ([the-redback](https://github.com/the-redback))
+- Prepend hard coded configurations to postgresql.conf [\#259](https://github.com/kubedb/postgres/pull/259) ([the-redback](https://github.com/the-redback))
+- Upgrade postgres-tools tag to v3 [\#258](https://github.com/kubedb/postgres/pull/258) ([the-redback](https://github.com/the-redback))
+- Fix: Provide postgres username to take backup [\#257](https://github.com/kubedb/postgres/pull/257) ([the-redback](https://github.com/the-redback))
+- Allow replica service to adhere to serviceTemplate [\#256](https://github.com/kubedb/postgres/pull/256) ([JustinHead](https://github.com/JustinHead))
+- Revendor dependencies [\#255](https://github.com/kubedb/postgres/pull/255) ([tamalsaha](https://github.com/tamalsaha))
+- ServiceAccount for snapshot jobs [\#254](https://github.com/kubedb/postgres/pull/254) ([the-redback](https://github.com/the-redback))
+- Revendor dependencies : Retry Failed Scheduler Snapshot [\#253](https://github.com/kubedb/postgres/pull/253) ([the-redback](https://github.com/the-redback))
+- Fix: All pod works as replica after Node/Cluster restart [\#252](https://github.com/kubedb/postgres/pull/252) ([the-redback](https://github.com/the-redback))
+- Take leader election configs from CRD [\#251](https://github.com/kubedb/postgres/pull/251) ([the-redback](https://github.com/the-redback))
+- Added ephemeral StorageType support [\#250](https://github.com/kubedb/postgres/pull/250) ([the-redback](https://github.com/the-redback))
+- Support GCP in wal-g [\#249](https://github.com/kubedb/postgres/pull/249) ([the-redback](https://github.com/the-redback))
+- Use PVC spec from snapshot if provided [\#247](https://github.com/kubedb/postgres/pull/247) ([tamalsaha](https://github.com/tamalsaha))
+- Revendored and updated tests for 'Prevent prefix matching of multiple snapshots' [\#246](https://github.com/kubedb/postgres/pull/246) ([the-redback](https://github.com/the-redback))
+- Add certificate health checker [\#245](https://github.com/kubedb/postgres/pull/245) ([tamalsaha](https://github.com/tamalsaha))
+- Fix AppBinding [\#244](https://github.com/kubedb/postgres/pull/244) ([tamalsaha](https://github.com/tamalsaha))
+- Postgres 10.6 and 11.1 support added [\#243](https://github.com/kubedb/postgres/pull/243) ([the-redback](https://github.com/the-redback))
+- Update E2E test: Env update is not restricted anymore [\#242](https://github.com/kubedb/postgres/pull/242) ([the-redback](https://github.com/the-redback))
+
 ## [0.9.0](https://github.com/kubedb/postgres/tree/0.9.0) (2018-12-17)
 [Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0-rc.2...0.9.0)
 
