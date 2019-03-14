@@ -1343,6 +1343,7 @@ var _ = Describe("Postgres", func() {
 				})
 			})
 
+			////////////////////==========GCS============//////////////////////
 			Context("In GCS", func() {
 
 				BeforeEach(func() {
@@ -1388,6 +1389,140 @@ var _ = Describe("Postgres", func() {
 								GCS: &store.GCSSpec{
 									Bucket: os.Getenv(GCS_BUCKET_NAME),
 									Prefix: fmt.Sprintf("kubedb/%s/%s/archive/", postgres2nd.Namespace, postgres2nd.Name),
+								},
+							},
+						},
+					}
+				})
+
+				Context("Archive and Initialize from wal archive", func() {
+
+					It("should archive and should resume from archive successfully", archiveAndInitializeFromArchive)
+				})
+
+				Context("WipeOut wal data", func() {
+
+					BeforeEach(func() {
+						postgres.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
+					})
+
+					It("should remove wal data from backend", shouldWipeOutWalData)
+				})
+			})
+
+			////////////////////==========AZURE============//////////////////////
+			Context("In AZURE", func() {
+
+				BeforeEach(func() {
+					secret = f.SecretForAzureBackend()
+					skipWalDataChecking = false
+					postgres.Spec.Archiver = &api.PostgresArchiverSpec{
+						Storage: &store.Backend{
+							StorageSecretName: secret.Name,
+							Azure: &store.AzureSpec{
+								Container: os.Getenv(AZURE_CONTAINER_NAME),
+							},
+						},
+					}
+
+					// -- > 2nd Postgres < --
+					postgres2nd = f.Postgres()
+					postgres2nd.Spec.Archiver = &api.PostgresArchiverSpec{
+						Storage: &store.Backend{
+							StorageSecretName: secret.Name,
+							Azure: &store.AzureSpec{
+								Container: os.Getenv(AZURE_CONTAINER_NAME),
+							},
+						},
+					}
+					postgres2nd.Spec.Init = &api.InitSpec{
+						PostgresWAL: &api.PostgresWALSourceSpec{
+							Backend: store.Backend{
+								StorageSecretName: secret.Name,
+								Azure: &store.AzureSpec{
+									Container: os.Getenv(AZURE_CONTAINER_NAME),
+									Prefix:    fmt.Sprintf("kubedb/%s/%s/archive/", postgres.Namespace, postgres.Name),
+								},
+							},
+						},
+					}
+
+					// -- > 3rd Postgres < --
+					postgres3rd = f.Postgres()
+					postgres3rd.Spec.Init = &api.InitSpec{
+						PostgresWAL: &api.PostgresWALSourceSpec{
+							Backend: store.Backend{
+								StorageSecretName: secret.Name,
+								Azure: &store.AzureSpec{
+									Container: os.Getenv(AZURE_CONTAINER_NAME),
+									Prefix:    fmt.Sprintf("kubedb/%s/%s/archive/", postgres2nd.Namespace, postgres2nd.Name),
+								},
+							},
+						},
+					}
+				})
+
+				Context("Archive and Initialize from wal archive", func() {
+
+					It("should archive and should resume from archive successfully", archiveAndInitializeFromArchive)
+				})
+
+				Context("WipeOut wal data", func() {
+
+					BeforeEach(func() {
+						postgres.Spec.TerminationPolicy = api.TerminationPolicyWipeOut
+					})
+
+					It("should remove wal data from backend", shouldWipeOutWalData)
+				})
+			})
+			//////////
+			////////////////////==========SWIFT============//////////////////////
+			Context("In SWIFT", func() {
+
+				BeforeEach(func() {
+					secret = f.SecretForSwiftBackend()
+					skipWalDataChecking = false
+					postgres.Spec.Archiver = &api.PostgresArchiverSpec{
+						Storage: &store.Backend{
+							StorageSecretName: secret.Name,
+							Swift: &store.SwiftSpec{
+								Container: os.Getenv(SWIFT_CONTAINER_NAME),
+							},
+						},
+					}
+
+					// -- > 2nd Postgres < --
+					postgres2nd = f.Postgres()
+					postgres2nd.Spec.Archiver = &api.PostgresArchiverSpec{
+						Storage: &store.Backend{
+							StorageSecretName: secret.Name,
+							Swift: &store.SwiftSpec{
+								Container: os.Getenv(SWIFT_CONTAINER_NAME),
+							},
+						},
+					}
+					postgres2nd.Spec.Init = &api.InitSpec{
+						PostgresWAL: &api.PostgresWALSourceSpec{
+							Backend: store.Backend{
+								StorageSecretName: secret.Name,
+								Swift: &store.SwiftSpec{
+									Container: os.Getenv(SWIFT_CONTAINER_NAME),
+									Prefix:    fmt.Sprintf("kubedb/%s/%s/archive/", postgres.Namespace, postgres.Name),
+								},
+							},
+						},
+					}
+
+					// -- > 3rd Postgres < --
+					postgres3rd = f.Postgres()
+					postgres3rd.Spec.Init = &api.InitSpec{
+						PostgresWAL: &api.PostgresWALSourceSpec{
+							Backend: store.Backend{
+								StorageSecretName: secret.Name,
+								Swift: &store.SwiftSpec{
+									Container: os.Getenv(SWIFT_CONTAINER_NAME),
+									Prefix:    fmt.Sprintf("kubedb/%s/%s/archive/", postgres2nd.Namespace, postgres2nd.Name),
 								},
 							},
 						},
