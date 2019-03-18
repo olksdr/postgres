@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.11.0](https://github.com/kubedb/postgres/tree/0.11.0) (2019-03-18)
+[Full Changelog](https://github.com/kubedb/postgres/compare/0.10.0...0.11.0)
+
+**Merged pull requests:**
+
+- PSP names in postgres e2e test framework [\#266](https://github.com/kubedb/postgres/pull/266) ([iamrz1](https://github.com/iamrz1))
+- Don't inherit app.kubernetes.io labels from CRD into offshoots [\#265](https://github.com/kubedb/postgres/pull/265) ([tamalsaha](https://github.com/tamalsaha))
+- Add role label to stats service [\#264](https://github.com/kubedb/postgres/pull/264) ([tamalsaha](https://github.com/tamalsaha))
+- Update Kubernetes client libraries to 1.13.0 release [\#263](https://github.com/kubedb/postgres/pull/263) ([tamalsaha](https://github.com/tamalsaha))
+- Support for Pod Security Policy [\#262](https://github.com/kubedb/postgres/pull/262) ([iamrz1](https://github.com/iamrz1))
+- Support for wal-g with Azure storage and OpenStack Swift [\#260](https://github.com/kubedb/postgres/pull/260) ([iamrz1](https://github.com/iamrz1))
+
 ## [0.10.0](https://github.com/kubedb/postgres/tree/0.10.0) (2019-02-20)
 [Full Changelog](https://github.com/kubedb/postgres/compare/0.9.0...0.10.0)
 
