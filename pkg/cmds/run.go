@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/appscode/go/log"
-	"github.com/kubedb/postgres/pkg/cmds/server"
+	"github.com/olksdr/postgres/pkg/cmds/server"
 	"github.com/spf13/cobra"
 	"kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/cli"
