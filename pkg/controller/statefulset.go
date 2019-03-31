@@ -505,7 +505,7 @@ func upsertShm(statefulSet *apps.StatefulSet, postgress *api.Postgres) *apps.Sta
 			}
 			volumes := statefulSet.Spec.Template.Spec.Volumes
 			volumes = core_util.UpsertVolume(volumes, configVolume)
-			statefulSet.Spec.Template.Spec.Containers[i].Volumes = volumes
+			statefulSet.Spec.Template.Spec.Containers.Volumes = volumes
 			return statefulSet
 		}
 	}
