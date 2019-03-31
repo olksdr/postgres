@@ -489,7 +489,7 @@ func upsertShm(statefulSet *apps.StatefulSet, postgress *api.Postgres) *apps.Sta
 		if container.Name == api.ResourceSingularPostgres {
 			volumeMount := core.VolumeMount{
 				Name:      "shared-memory",
-				MountPath: "/srv/shm",
+				MountPath: "/var/shm",
 			}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, volumeMount)
@@ -498,9 +498,7 @@ func upsertShm(statefulSet *apps.StatefulSet, postgress *api.Postgres) *apps.Sta
 			configVolume := core.Volume{
 				Name: "shared-memory",
 				VolumeSource: core.VolumeSource{
-					EmptyDir: &core.EmptyDirVolumeSource{
-						Medium: core.StorageMediumMemory,
-					},
+					EmptyDir: &core.EmptyDirVolumeSource{},
 				},
 			}
 			volumes := statefulSet.Spec.Template.Spec.Volumes
