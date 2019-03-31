@@ -1,7 +1,7 @@
 package controller
 
 import (
-	le "github.com/kubedb/postgres/pkg/leader_election"
+	le "github.com/olksdr/postgres/pkg/leader_election"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/kubedb/postgres/pkg/cmds"
+	"github.com/olksdr/postgres/pkg/cmds"
 	"kmodules.xyz/client-go/logs"
 )
 

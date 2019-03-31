@@ -2,7 +2,7 @@ package controller
 
 import (
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
-	le "github.com/kubedb/postgres/pkg/leader_election"
+	le "github.com/olksdr/postgres/pkg/leader_election"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	policy_v1beta1 "k8s.io/api/policy/v1beta1"
