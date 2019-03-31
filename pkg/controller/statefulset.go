@@ -122,9 +122,9 @@ func (c *Controller) ensureStatefulSet(
 			}
 		}
 
-		in = upsertShm(in, postgres)
 		in = upsertDataVolume(in, postgres)
 		in = upsertCustomConfig(in, postgres)
+		in = upsertShm(in, postgres)
 
 		if c.EnableRBAC {
 			in.Spec.Template.Spec.ServiceAccountName = postgres.OffshootName()
@@ -489,7 +489,7 @@ func upsertShm(statefulSet *apps.StatefulSet, postgress *api.Postgres) *apps.Sta
 		if container.Name == api.ResourceSingularPostgres {
 			volumeMount := core.VolumeMount{
 				Name:      "shared-memory",
-				MountPath: "/dev/shm",
+				MountPath: "/srv/shm",
 			}
 			volumeMounts := container.VolumeMounts
 			volumeMounts = core_util.UpsertVolumeMount(volumeMounts, volumeMount)
